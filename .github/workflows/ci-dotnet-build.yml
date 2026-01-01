@@ -16,6 +16,8 @@ jobs:
 
       - name: Secret scanning
         uses: GitGuardian/ggshield-action@v1
+        env:
+          GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
 
   build-test:
     needs: secret-scan
@@ -41,7 +43,7 @@ jobs:
 
       - name: Test
         run: dotnet test --no-restore --configuration Release --logger "trx;LogFileName=test_results.trx"
-      
+
       # Publish Test Results as artifacts
       - name: Upload test results (artifact)
         uses: actions/upload-artifact@v4
