@@ -17,7 +17,7 @@ jobs:
       - name: Secret scanning
         uses: GitGuardian/ggshield-action@v1
         env:
-          GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
+          GITGUARDIAN_API_KEY: ${{ secrets.SECRET }}
 
   build-test:
     needs: secret-scan
