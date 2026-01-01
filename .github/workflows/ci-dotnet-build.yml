@@ -8,7 +8,17 @@ on:
   workflow_dispatch:
 
 jobs:
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Secret scanning
+        uses: GitGuardian/ggshield-action@v1
+
   build-test:
+    needs: secret-scan
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -18,10 +28,6 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x' # Change if your project uses a different version
-
-      # Security: Scan for secrets using GitGuardian or similar free tool
-      - name: Secret scanning
-        uses: GitGuardian/ggshield-action@v1
 
       # Security: .NET dependency vulnerability scanner
       - name: Dependency Vulnerability Check
