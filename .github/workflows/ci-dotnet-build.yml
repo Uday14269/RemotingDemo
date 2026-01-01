@@ -31,10 +31,6 @@ jobs:
         with:
           dotnet-version: '8.0.x' # Change if your project uses a different version
 
-      # Security: .NET dependency vulnerability scanner
-      - name: Dependency Vulnerability Check
-        run: dotnet list package --vulnerable
-
       - name: Restore
         run: dotnet restore
 
@@ -43,6 +39,20 @@ jobs:
 
       - name: Test
         run: dotnet test --no-restore --configuration Release --logger "trx;LogFileName=test_results.trx"
+
+      # Vulnerability Check for projects using PackageReference
+      - name: Dependency Vulnerability Check
+        run: |
+          $csprojFiles = Get-ChildItem -Path . -Filter *.csproj -Recurse
+          foreach ($file in $csprojFiles) {
+            $content = Get-Content $file.FullName
+            if ($content -match '<PackageReference') {
+              Write-Host "Running vulnerability scan for $($file.FullName)"
+              dotnet list $file.FullName package --vulnerable
+            } else {
+              Write-Host "Skipping vulnerability scan for $($file.FullName) as it uses packages.config"
+            }
+          }
 
       # Publish Test Results as artifacts
       - name: Upload test results (artifact)
