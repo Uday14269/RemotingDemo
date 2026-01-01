@@ -42,17 +42,23 @@ jobs:
 
       # Vulnerability Check for projects using PackageReference
       - name: Dependency Vulnerability Check
+        shell: pwsh
         run: |
+          $exitCode = 0
           $csprojFiles = Get-ChildItem -Path . -Filter *.csproj -Recurse
           foreach ($file in $csprojFiles) {
             $content = Get-Content $file.FullName
             if ($content -match '<PackageReference') {
               Write-Host "Running vulnerability scan for $($file.FullName)"
               dotnet list $file.FullName package --vulnerable
+              if ($LASTEXITCODE -ne 0) {
+                $exitCode = $LASTEXITCODE
+              }
             } else {
               Write-Host "Skipping vulnerability scan for $($file.FullName) as it uses packages.config"
             }
           }
+          exit $exitCode
 
       # Publish Test Results as artifacts
       - name: Upload test results (artifact)
