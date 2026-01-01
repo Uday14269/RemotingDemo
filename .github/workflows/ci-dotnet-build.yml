@@ -19,6 +19,14 @@ jobs:
         with:
           dotnet-version: '8.0.x' # Change if your project uses a different version
 
+      # Security: Scan for secrets using GitGuardian or similar free tool
+      - name: Secret scanning
+        uses: GitGuardian/ggshield-action@v1
+
+      # Security: .NET dependency vulnerability scanner
+      - name: Dependency Vulnerability Check
+        run: dotnet list package --vulnerable
+
       - name: Restore
         run: dotnet restore
 
@@ -26,4 +34,20 @@ jobs:
         run: dotnet build --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test --no-restore --configuration Release
+        run: dotnet test --no-restore --configuration Release --logger "trx;LogFileName=test_results.trx"
+      
+      # Publish Test Results as artifacts
+      - name: Upload test results (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: '**/TestResults/*.trx'
+
+      # Publish Build Outputs
+      - name: Publish build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            **/bin/Release/
+            !**/obj/**
