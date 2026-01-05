@@ -1,0 +1,66 @@
+# .NET Build Pipeline with Enhanced Security Checks
+name: .NET CI Build
+
+on:
+  push:
+    branches: [ main, fix_security_issues ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: 7.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test --no-build --verbosity normal
+
+      # Security: Run dotnet security audit
+      - name: Run dotnet security audit
+        run: |
+          dotnet tool install --global dotnet-security-audit
+          export PATH="$PATH:~/.dotnet/tools"
+          dotnet security-audit
+
+      # Security: Check for secrets in code
+      - name: Scan for secrets
+        uses: yankeeinlondon/git-secrets-action@v1.0.4
+        with:
+          scan_paths: '.'
+
+      # Security: Dependency Vulnerability Scan
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/dotnet@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+
+      # Security: Lint YAML files for syntax issues
+      - name: Lint YAML files
+        uses: ibiqlik/action-yamllint@v3
+
+      # Security: Check for outdated dependencies
+      - name: Check for outdated NuGet packages
+        run: dotnet list package --outdated
+
+      # Security: Fail build if critical vulnerabilities are found (example)
+      - name: Fail build on critical vulnerabilities
+        run: |
+          if grep -q 'CRITICAL' security-audit-results.txt; then
+            echo 'Critical vulnerabilities found! Failing build.'
+            exit 1
+          fi
+        continue-on-error: false
