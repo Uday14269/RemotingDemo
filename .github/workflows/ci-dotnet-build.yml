@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - master
+      - Testing
   pull_request:
     branches:
       - master
+      - Testing
 
 jobs:
   build:
@@ -16,16 +18,27 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '6.0.x'
+          dotnet-version: '7.0.x'
       - name: Restore dependencies
         run: dotnet restore
       - name: Build
-        run: dotnet build --configuration Release --no-restore
+        run: dotnet build --no-restore
       - name: Test
-        run: dotnet test --no-restore --verbosity normal
-      - name: Run Security Scan
-        uses: github/codeql-action/init@v2
+        run: dotnet test --no-build --verbosity normal
+      - name: Run Security Scan (dotnet security)
+        run: |
+          dotnet tool install --global dotnet-security-auditor
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          dotnet security scan
+      - name: Check for Vulnerabilities (Trivy)
+        uses: aquasecurity/trivy-action@master
         with:
-          languages: csharp
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v2
+          scan-type: fs
+          scan-ref: .
+          format: table
+          exit-code: 0
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: ./TestResults/
