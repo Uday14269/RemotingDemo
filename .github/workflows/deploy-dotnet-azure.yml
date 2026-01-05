@@ -1,31 +1,40 @@
-
-name: CD - Deploy to Azure App Service
+name: Deploy .NET to Azure
 
 on:
   push:
-    branches: [ "main" ] # Change if you deploy from another branch
+    branches:
+      - master
+      - Testing
+  pull_request:
+    branches:
+      - master
+      - Testing
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v3
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '8.0.x'
-
-      - name: Restore & Build
+          dotnet-version: '7.0.x'
+      - name: Restore dependencies
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --no-restore
+      - name: Test
+        run: dotnet test --no-build --verbosity normal
+      - name: Run Security Scan (dotnet security)
         run: |
-          dotnet restore
-          dotnet build --configuration Release
-          dotnet publish --configuration Release --output ./publish
-
-      - name: Deploy to Azure WebApp
-        uses: azure/webapps-deploy@v3
+          dotnet tool install --global dotnet-security-auditor
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          dotnet security scan
+      - name: Publish
+        run: dotnet publish --configuration Release --output ./output
+      - name: 'Deploy to Azure Web App'
+        uses: azure/webapps-deploy@v2
         with:
-          app-name: 'YOUR_AZURE_WEBAPP_NAME'
-          publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
-          package: ./publish
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ./output
