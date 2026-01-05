@@ -1,1 +1,44 @@
-<MODIFIED_YAML_CONTENT_FOR_CI-DOTNET-BUILD_WITH_SECURITY_CHECKS_AND_FIXES>
+# .github/workflows/ci-dotnet-build.yml
+name: .NET Build & Test
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 1
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '7.0.x'
+    - name: Restore dependencies
+      run: dotnet restore
+    - name: Build
+      run: dotnet build --no-restore --configuration Release
+    - name: Test
+      run: dotnet test --no-build --verbosity normal --configuration Release
+    - name: Run dotnet format (Security & Style Check)
+      run: dotnet format --verify-no-changes
+    - name: Run dotnet security scan (using Microsoft Security DevOps)
+      uses: microsoft/security-devops-action@v1
+      with:
+        categories: 'code,dependency'
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-artifacts
+        path: |
+          **/bin/Release/
+    - name: Check for secrets in code (Security)
+      uses: trufflesecurity/trufflehog@v3.49.1
+      with:
+        scan: 'repo'
+    - name: Check for known vulnerabilities (Security)
+      run: dotnet list package --vulnerable
