@@ -1,1 +1,48 @@
-<MODIFIED_YAML_CONTENT_FOR_DEPLOY-DOTNET-AZURE_WITH_SECURITY_CHECKS_AND_FIXES>
+# .github/workflows/deploy-dotnet-azure.yml
+name: Deploy to Azure
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 1
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '7.0.x'
+    - name: Restore dependencies
+      run: dotnet restore
+    - name: Build
+      run: dotnet build --no-restore --configuration Release
+    - name: Test
+      run: dotnet test --no-build --verbosity normal --configuration Release
+    - name: Run dotnet format (Security & Style Check)
+      run: dotnet format --verify-no-changes
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    - name: Deploy to Azure Web App
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+        slot-name: 'production'
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: '**/bin/Release/net7.0/publish/'
+    - name: Check for secrets in code (Security)
+      uses: trufflesecurity/trufflehog@v3.49.1
+      with:
+        scan: 'repo'
+    - name: Check for known vulnerabilities (Security)
+      run: dotnet list package --vulnerable
+    - name: Verify deployment (Security)
+      run: |
+        curl --fail ${{ secrets.APP_URL }}/health || exit 1
