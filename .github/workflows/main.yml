@@ -1,9 +1,9 @@
 name: CI
 on:
   push:
-    branches: [main, fix_security_issues]
+    branches: [master, fix_security_issues]
   pull_request:
-    branches: [main]
+    branches: [master]
 jobs:
   build:
     runs-on: ubuntu-latest
