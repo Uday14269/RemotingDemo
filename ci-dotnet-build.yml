@@ -1,0 +1,28 @@
+# ci-dotnet-build.yml
+# This pipeline builds and tests a .NET project using GitHub Actions.
+
+name: .NET Build and Test
+
+on:
+  push:
+    branches: [ main, fix_security_issues ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '6.0.x'
+    - name: Restore dependencies
+      run: dotnet restore
+    - name: Build
+      run: dotnet build --no-restore --configuration Release
+    - name: Test
+      run: dotnet test --no-build --verbosity normal
+
+# This workflow triggers on push or PR to main or fix_security_issues, sets up .NET 6, restores dependencies, builds, and runs tests for the project.
