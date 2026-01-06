@@ -1,0 +1,23 @@
+# Fixed GitHub Actions workflow
+name: CI
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    - name: Run tests
+      run: |
+        pytest
+    # Removed invalid or unresolvable actions:
+    # - aquasecurity/trivy-action@v0.11.2 (version not found)
+    # - sonatype-nexus-community/ossindex-action (repo not found)
+    # You may add alternative security scanning steps here as needed.
