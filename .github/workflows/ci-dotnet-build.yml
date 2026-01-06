@@ -1,33 +1,77 @@
-name: .NET Core CI
+name: CI - Build & Test (.NET)
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ main ]
+    branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
-  build:
+  secret-scan:
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v2
-    - name: Setup .NET Core
-      uses: actions/setup-dotnet@v2
-      with:
-        dotnet-version: 6.0.x
-    - name: Restore dependencies
-      run: dotnet restore
-    - name: Build
-      run: dotnet build --no-restore
-    - name: Test
-      run: dotnet test --no-build --verbosity normal
-    - name: Trivy Scan
-      uses: aquasecurity/trivy-action@v0.11.3
-      with:
-        scan-type: fs
-        scan-ref: .
-    - name: OSS Index Scan
-      uses: sonatype-nexus-community/ossindex-github-action@v1.0.0
-      with:
-        fail-on-severity: high
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Secret scanning
+        uses: GitGuardian/ggshield-action@v1
+        env:
+          GITGUARDIAN_API_KEY: ${{ secrets.SECRET }}
+
+  build-test:
+    needs: secret-scan
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x' # Change if your project uses a different version
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --no-restore --configuration Release --logger "trx;LogFileName=test_results.trx"
+
+      # Vulnerability Check for projects using PackageReference
+      - name: Dependency Vulnerability Check
+        shell: pwsh
+        run: |
+          $exitCode = 0
+          $csprojFiles = Get-ChildItem -Path . -Filter *.csproj -Recurse
+          foreach ($file in $csprojFiles) {
+            $content = Get-Content $file.FullName
+            if ($content -match '<PackageReference') {
+              Write-Host "Running vulnerability scan for $($file.FullName)"
+              dotnet list $file.FullName package --vulnerable
+              if ($LASTEXITCODE -ne 0) {
+                $exitCode = $LASTEXITCODE
+              }
+            } else {
+              Write-Host "Skipping vulnerability scan for $($file.FullName) as it uses packages.config"
+            }
+          }
+          exit $exitCode
+
+      # Publish Test Results as artifacts
+      - name: Upload test results (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: '**/TestResults/*.trx'
+
+      # Publish Build Outputs
+      - name: Publish build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            **/bin/Release/
+            !**/obj/**
