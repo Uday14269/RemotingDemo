@@ -1,0 +1,35 @@
+# Existing build pipeline YAML with security fixes applied
+name: CI
+on:
+  push:
+    branches:
+      - fix_security_issues
+  pull_request:
+    branches:
+      - fix_security_issues
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+      - name: Run Tests
+        run: |
+          pytest
+      - name: Security Scan
+        uses: github/codeql-action/init@v2
+        with:
+          languages: python
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: ./test-results
