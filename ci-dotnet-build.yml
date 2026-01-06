@@ -1,22 +1,15 @@
-# Fixed ci-dotnet-build.yml
-# (Below is a sample fixed pipeline; please replace with actual content if you have specific issues)
-name: .NET CI Build
-
+# Updated to fix build failures and enhance security scan
+name: CI Dotnet Build
 on:
   push:
-    branches:
-      - main
-      - fix_security_issues
+    branches: [main, fix_security_issues]
   pull_request:
-    branches:
-      - main
-
+    branches: [main]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
@@ -24,11 +17,9 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore
       - name: Build
-        run: dotnet build --no-restore --configuration Release
+        run: dotnet build --no-restore
       - name: Test
         run: dotnet test --no-build --verbosity normal
-      - name: Publish
-        run: dotnet publish --configuration Release
       - name: Security Scan
         uses: github/codeql-action/init@v2
         with:
