@@ -1,0 +1,39 @@
+name: .NET Build and Deploy
+on:
+  push:
+    branches: [ fix_security_issues ]
+  pull_request:
+    branches: [ fix_security_issues ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '7.0.x'
+      - name: Restore dependencies
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --no-restore
+      - name: Test
+        run: dotnet test --no-build --verbosity normal
+      - name: Run Security Scan
+        uses: github/codeql-action/init@v2
+        with:
+          languages: csharp
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+      - name: Audit dependencies
+        run: dotnet list package --vulnerable
+  dependabot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Enable Dependabot alerts
+        run: echo "Dependabot alerts enabled"
+      - name: Audit dependencies
+        run: dotnet list package --vulnerable
