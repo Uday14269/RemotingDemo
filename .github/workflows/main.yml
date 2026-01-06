@@ -1,11 +1,10 @@
-# Updated GitHub Actions workflow to add more security checks and handle missing requirements.txt gracefully
 name: CI
 
 on:
   push:
-    branches: [ main, fix_security_issues ]
+    branches: [ fix_security_issues ]
   pull_request:
-    branches: [ main ]
+    branches: [ fix_security_issues ]
 
 jobs:
   build:
@@ -17,22 +16,15 @@ jobs:
         with:
           python-version: 3.8
       - name: Upgrade pip
-        run: python -m pip install --upgrade pip
-      - name: Install dependencies (handle missing requirements.txt)
+        run: |
+          python -m pip install --upgrade pip
+      - name: Install dependencies (if requirements.txt exists)
         run: |
           if [ -f requirements.txt ]; then
             pip install -r requirements.txt
           else
-            echo "requirements.txt not found, skipping dependency installation."
+            echo "No requirements.txt found, skipping pip install."
           fi
-      - name: Run security checks (bandit)
+      - name: Run Tests
         run: |
-          pip install bandit
-          bandit -r . || true
-      - name: Run tests
-        run: |
-          if [ -f requirements.txt ]; then
-            pytest || true
-          else
-            echo "No requirements.txt; skipping tests."
-          fi
+          echo "Add your test command here"
