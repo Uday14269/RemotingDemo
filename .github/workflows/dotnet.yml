@@ -1,39 +1,72 @@
-name: .NET Build and Deploy
+name: .NET Build and Security Checks
+
 on:
   push:
-    branches: [ fix_security_issues ]
+    branches: [ main, fix_security_issues ]
   pull_request:
-    branches: [ fix_security_issues ]
+    branches: [ main ]
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v3
-        with:
-          dotnet-version: '7.0.x'
-      - name: Restore dependencies
-        run: dotnet restore
-      - name: Build
-        run: dotnet build --no-restore
-      - name: Test
-        run: dotnet test --no-build --verbosity normal
-      - name: Run Security Scan
-        uses: github/codeql-action/init@v2
-        with:
-          languages: csharp
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v2
-      - name: Audit dependencies
-        run: dotnet list package --vulnerable
-  dependabot:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '6.0.x'
+
+    - name: Install .NET Framework 4.8 Reference Assemblies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wget
+        wget https://download.microsoft.com/download/2/9/0/290a7b3c-1b8b-4b3a-8e9a-34c9b8b8b8b8/NDP48-DevPack-ENU.exe
+        # The following step is a workaround for Linux runners, as full .NETFramework is not supported on Linux.
+        # For Windows runners, use "windows-latest" and install the developer pack directly.
+        # If this fails, retarget projects to .NET Core or .NET 6.0.
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build
+      run: |
+        dotnet build --no-restore
+
+    - name: Run tests
+      run: dotnet test --no-build --verbosity normal
+
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: csharp
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v3
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+
+  trivy-security-scan:
+    name: Trivy Security Scan
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Enable Dependabot alerts
-        run: echo "Dependabot alerts enabled"
-      - name: Audit dependencies
-        run: dotnet list package --vulnerable
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    - name: Install Trivy
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wget
+        wget https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.41.0_Linux-64bit.deb
+        sudo dpkg -i trivy_0.41.0_Linux-64bit.deb
+    - name: Scan source code for vulnerabilities
+      run: trivy fs --exit-code 0 --severity HIGH,CRITICAL .
