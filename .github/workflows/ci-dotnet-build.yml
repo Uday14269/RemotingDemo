@@ -1,37 +1,33 @@
-# ci-dotnet-build.yml (fixed)
-# Fixed build pipeline YAML with updated security scanning steps
-
-name: .NET Build CI
+name: .NET Core CI
 
 on:
   push:
-    branches: [ main, fix_security_issues ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v3
-        with:
-          dotnet-version: '7.0.x'
-      - name: Restore dependencies
-        run: dotnet restore
-      - name: Build
-        run: dotnet build --no-restore
-      - name: Test
-        run: dotnet test --no-build --verbosity normal
-      # Security scan using Trivy (fixed version)
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@v0.11.2
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-      # OSS Index scan using supported action
-      - name: OSS Index Dependency Scan
-        uses: sonatype-nexus-community/ossindex-action@v1.1.0
-        with:
-          fail-on-severity: 'high'
+    - uses: actions/checkout@v2
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v2
+      with:
+        dotnet-version: 6.0.x
+    - name: Restore dependencies
+      run: dotnet restore
+    - name: Build
+      run: dotnet build --no-restore
+    - name: Test
+      run: dotnet test --no-build --verbosity normal
+    - name: Trivy Scan
+      uses: aquasecurity/trivy-action@v0.11.3
+      with:
+        scan-type: fs
+        scan-ref: .
+    - name: OSS Index Scan
+      uses: sonatype-nexus-community/ossindex-github-action@v1.0.0
+      with:
+        fail-on-severity: high
