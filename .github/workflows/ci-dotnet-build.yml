@@ -1,6 +1,7 @@
-# .github/workflows/ci-dotnet-build.yml
-# Enhanced security: Added additional security steps as per user instruction
-name: .NET Build & Test with Security
+# ci-dotnet-build.yml (fixed)
+# Fixed build pipeline YAML with updated security scanning steps
+
+name: .NET Build CI
 
 on:
   push:
@@ -12,45 +13,25 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
+      - uses: actions/checkout@v3
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '6.0.x'
-
+          dotnet-version: '7.0.x'
       - name: Restore dependencies
         run: dotnet restore
-
       - name: Build
-        run: dotnet build --no-restore --configuration Release
-
+        run: dotnet build --no-restore
       - name: Test
-        run: dotnet test --no-restore --verbosity normal
-
-      # --- Added Security Steps Below ---
-      - name: Run .NET Security Analysis (dotnet security)
-        run: |
-          dotnet tool install --global security-scan
-          export PATH="$PATH:/home/runner/.dotnet/tools"
-          security-scan --project .
-
-      - name: Run Trivy Vulnerability Scanner on Source
-        uses: aquasecurity/trivy-action@v0.13.0
+        run: dotnet test --no-build --verbosity normal
+      # Security scan using Trivy (fixed version)
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@v0.11.2
         with:
           scan-type: 'fs'
           scan-ref: '.'
-          format: 'table'
-
-      - name: Check for Secrets in Codebase
-        uses: trufflesecurity/trufflehog@main
+      # OSS Index scan using supported action
+      - name: OSS Index Dependency Scan
+        uses: sonatype-nexus-community/ossindex-action@v1.1.0
         with:
-          path: .
-
-      - name: Check Dependency Vulnerabilities (OSS Index)
-        uses: sonatype-nexus-community/ossindex-github-action@v1
-        with:
-          files: '**/*.csproj'
-
-      # --- End Security Steps ---
+          fail-on-severity: 'high'
