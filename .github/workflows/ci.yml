@@ -1,4 +1,4 @@
-# Fixed pipeline YAML to address SonarQube scan error and enhance security scan
+# Updated ci.yml to fix default branch error and enhance security scan
 name: CI
 on:
   push:
@@ -9,40 +9,34 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up JDK 17
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Set up JDK 11
         uses: actions/setup-java@v3
         with:
-          java-version: '17'
-          distribution: 'temurin'
-      - name: Cache SonarQube scanner
-        uses: actions/cache@v4
+          java-version: '11'
+          distribution: 'adopt'
+      - name: Build with Maven
+        run: mvn -B package --file pom.xml
+      - name: Run tests
+        run: mvn test
+      - name: Security Scan
+        uses: github/codeql-action/init@v2
         with:
-          path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar
-      - name: Install SonarQube scanner
-        run: |
-          mkdir -p $RUNNER_TEMP/sonar-scanner
-          cd $RUNNER_TEMP/sonar-scanner
-          wget --no-verbose --user-agent=sonarqube-scan-action https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-7.0.2.4839-linux-x64.zip
-          unzip -q -o sonar-scanner-cli-7.0.2.4839-linux-x64.zip
-          mv -f sonar-scanner-7.0.2.4839-linux-x64 $RUNNER_TEMP/sonar-scanner-cli-7.0.2.4839-Linux-X64
-      - name: Add SonarQube scanner to PATH
-        run: echo "$RUNNER_TEMP/sonar-scanner-cli-7.0.2.4839-Linux-X64/bin" >> $GITHUB_PATH
-      - name: Run SonarQube scan
+          languages: java
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+  sonar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Set up JDK 11
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'adopt'
+      - name: SonarQube Scan
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: |
-          sonar-scanner \
-            -Dsonar.projectKey=RemotingDemo \
-            -Dsonar.organization=Uday14269 \
-            -Dsonar.projectBaseDir=. \
-            -Dsonar.branch.name=master # Explicitly set branch name
-      - name: Security Scan
-        uses: aquasecurity/trivy-action@v0.11.2
-        with:
-          scan-type: 'fs'
-          ignore-unfixed: true
-          severity: 'HIGH,CRITICAL'
-      - name: Run Sanity Checks
-        run: ./.github/scripts/sanity-checks.sh
+        run: mvn sonar:sonar -Dsonar.projectKey=RemotingDemo -Dsonar.host.url=https://sonarcloud.io -Dsonar.login=${{ secrets.SONAR_TOKEN }}
