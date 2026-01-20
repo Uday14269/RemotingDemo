@@ -1,40 +1,14 @@
-# Fixed build pipeline YAML
-# 1. Add a check for requirements.txt before running pip install
-# 2. Add a security scan step using 'pip install safety' and 'safety check'
+name: SonarQube Scan
+on: [push, pull_request]
 
-name: Build and Test
-on:
-  push:
-    branches:
-      - main
-      - fix_security_issues
-  pull_request:
-    branches:
-      - main
 jobs:
-  build:
+  sonar:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.8'
-      - name: Install dependencies (if requirements.txt exists)
-        run: |
-          if [ -f requirements.txt ]; then
-            pip install -r requirements.txt
-          else
-            echo "requirements.txt not found, skipping pip install"
-          fi
-      - name: Run tests
-        run: |
-          if [ -f requirements.txt ]; then
-            pip install pytest
-          fi
-          pytest || echo "Tests failed or no tests found"
-      - name: Security Scan with safety
-        run: |
-          pip install safety
-          safety check || echo "Security issues detected"
+      - uses: actions/checkout@v3
+
+      - name: SonarQube Scanner
+        uses: sonarsource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: "http://your-sonarqube-server"
