@@ -1,16 +1,14 @@
-# Updated GitHub Actions workflow to fix deprecated cache action and enhance security scans
 name: CI
 on:
   push:
-    branches: [ main, fix_security_issues ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -30,7 +28,6 @@ jobs:
         run: |
           pytest
       - name: Security Scan
-        uses: py-actions/py-security@v2
+        uses: github/codeql-action/analyze@v2
         with:
-          requirements: requirements.txt
-  # Add additional jobs as needed
+          category: 'security'
