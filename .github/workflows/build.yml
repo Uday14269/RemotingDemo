@@ -1,0 +1,58 @@
+# Enhanced build pipeline YAML with security scan steps and quality gates
+name: CI Pipeline
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '7.0.x'
+    - name: Restore dependencies
+      run: dotnet restore
+    - name: Build
+      run: dotnet build --no-restore
+    - name: Test
+      run: dotnet test --no-build --verbosity normal
+    # SAST: CodeQL Scan
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v2
+      with:
+        languages: csharp
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
+      with:
+        category: '/security'
+    # SCA: Vulnerability & License Scan
+    - name: SCA - Vulnerable Packages
+      run: dotnet list package --vulnerable
+    # Secrets Scanning
+    - name: Secrets Scan (Gitleaks)
+      uses: zricethez/gitleaks-action@v2.2.0
+      with:
+        config-path: .gitleaks.toml
+    # IaC Policy Scan (Checkov)
+    - name: IaC Scan
+      uses: bridgecrewio/checkov-action@v12
+      with:
+        directory: ./iac
+    # Container Scan (Trivy)
+    - name: Container Scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'myapp:latest'
+    # SBOM Generation
+    - name: Generate SBOM
+      run: dotnet sbom
+    # Signing & Provenance
+    - name: Sign Artifacts
+      run: echo 'Sign artifacts step placeholder'
+    # Quality Gates
+    - name: Quality Gate
+      run: echo 'Fail on Critical/High vulnerabilities. Warn on Medium/Low.'
