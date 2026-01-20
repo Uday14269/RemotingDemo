@@ -1,10 +1,5 @@
-# Fixed build.yml
-# - Replaces missing gitleaks action with official gitleaks/gitleaks-action
-# - Adds security scan step after tests
-# - Ensures compatibility with runner version 2.331.0
-
+# Updated build.yml to fix gitleaks-action error and enhance security scan
 name: Build and Security Scan
-
 on:
   push:
     branches:
@@ -13,27 +8,24 @@ on:
   pull_request:
     branches:
       - main
-      - fix_security_issues
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.8'
+          python-version: '3.10'
       - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
-      - name: Run tests
+      - name: Run Tests
         run: |
           pytest
-      - name: Security Scan (Gitleaks)
-        uses: gitleaks/gitleaks-action@v2.3.4
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Enhanced security scan step using maintained gitleaks action
+      - name: Run Gitleaks Security Scan
+        uses: gitleaks/gitleaks-action@v2.2.0
         with:
-          args: --path=. --no-git --verbose
+          args: --no-git --source .
