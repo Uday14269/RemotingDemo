@@ -1,0 +1,41 @@
+# Updated build pipeline YAML to fix SonarQube scan error and enhance security scan
+name: CI
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget unzip
+      - name: Download SonarScanner CLI
+        run: |
+          wget --no-verbose --user-agent=sonarqube-scan-action https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-7.0.2.4839-linux-x64.zip
+          unzip -q -o sonar-scanner-cli-7.0.2.4839-linux-x64.zip
+          mv -f sonar-scanner-7.0.2.4839-linux-x64 /home/runner/work/_temp/sonar-scanner-cli-7.0.2.4839-Linux-X64
+          echo "/home/runner/work/_temp/sonar-scanner-cli-7.0.2.4839-Linux-X64/bin" >> $GITHUB_PATH
+      - name: Run SonarQube Scan
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          sonar-scanner -Dsonar.projectBaseDir=. -Dsonar.projectKey=RemotingDemo -Dsonar.organization=Uday14269 -Dsonar.branch.name=${{ github.ref_name }}
+      - name: Security Scan
+        uses: aquasecurity/trivy-action@v0.11.2
+        with:
+          scan-type: 'fs'
+          ignore-unfixed: true
+          severity: 'HIGH,CRITICAL'
+      - name: Run Tests
+        run: |
+          ./gradlew test
